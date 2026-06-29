@@ -1,0 +1,418 @@
+/* * styles.css
+ * Custom styles untuk SahabatPetani AI Landing Page
+ */
+
+:root {
+    --bg: #ffffff;
+    --card: #ffffff;
+    --accent: #2f6b28;
+    --accent-bright: #3d8c35;
+    --accent-light: #e8f5e9;
+    --primary: var(--accent);
+    --accent-thin: rgba(47,107,40,0.12);
+    --text: #1F2937;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --info: #3b82f6;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 50%, #ffffff 100%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+        sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text);
+    font-weight: 700;
+}
+
+a {
+    color: var(--text);
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Logo */
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    text-decoration: none;
+}
+
+.logo-img { height: 56px; width: auto; display: block; }
+.logo-text { font-size: 1.4rem; font-weight: 700; color: var(--accent); }
+
+/* Menu icons color */
+.menu-icon, .close-icon { color: var(--accent); stroke: var(--accent); }
+
+/* Ripple effect used by script.js */
+.ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.35);
+    transform: scale(0);
+    animation: ripple 600ms linear;
+    pointer-events: none;
+}
+
+@keyframes ripple {
+    to {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+@keyframes iconBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Icon animations */
+svg {
+    transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+button:hover svg {
+    animation: iconBounce 0.6s ease-in-out;
+    filter: brightness(1.1);
+}
+
+.feature-card:hover .feature-icon svg {
+    transform: scale(1.15) rotate(5deg);
+    filter: drop-shadow(0 4px 8px rgba(47, 107, 40, 0.2));
+}
+
+/* Card Background */
+.card-bg { background-color: #fff; border: 1px solid var(--accent-thin); }
+
+/* Layout container refinements */
+.site {
+    width: 100%;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    background: var(--card);
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    border-bottom: 1px solid rgba(47, 107, 40, 0.12);
+    padding: 0.75rem 64px;
+    background-color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.hero {
+    display: grid;
+    grid-template-columns: 1fr 440px;
+    gap: 50px;
+    align-items: center;
+    padding: 32px 64px;
+}
+
+.section-title { font-size: 2.2rem; margin-bottom: 12px; font-weight: 800; line-height: 1.3; }
+
+/* Upload card */
+.upload-card {
+    border: 2px dashed var(--accent);
+    border-radius: 16px;
+    padding: 36px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(232, 245, 233, 0.5) 0%, rgba(255, 255, 255, 0.8) 100%);
+    min-height: 320px;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 2px 12px rgba(47, 107, 40, 0.08);
+    position: relative;
+    overflow: hidden;
+}
+
+.upload-card:hover {
+    border-color: var(--accent-bright);
+    background: linear-gradient(135deg, rgba(232, 245, 233, 0.8) 0%, rgba(240, 253, 244, 0.9) 100%);
+    box-shadow: 0 8px 24px rgba(47, 107, 40, 0.15);
+    transform: translateY(-2px);
+}
+
+.upload-input {
+    width: 100%;
+    text-align: center;
+}
+
+.upload-input #dropZone {
+    padding: 24px 16px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    color: var(--accent);
+}
+
+.upload-preview {
+    width: 100%;
+    max-height: 320px;
+    object-fit: contain;
+    border-radius: 8px;
+    border: 1px solid var(--accent-thin);
+}
+
+.muted { color: #6b7280; font-size: 1.05rem; }
+
+/* Button Styles */
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-bright) 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 14px 28px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 15px rgba(47, 107, 40, 0.15);
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1.05rem;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover { 
+    transform: translateY(-2px); 
+    box-shadow: 0 8px 20px rgba(47, 107, 40, 0.25);
+}
+
+.btn-secondary {
+    color: var(--accent);
+    border: 2px solid var(--accent);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 8px;
+    padding: 8px 12px;
+    background: transparent;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.btn-secondary:hover {
+    background: rgba(47, 107, 40, 0.08);
+}
+
+/* =======================================================
+   MODAL KAMERA KOTAK RESPONSIF (UNTUK REAL-TIME DETEKSI)
+   ======================================================= */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 16px;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 500px; /* Lebar diperluas agar kotak proporsional */
+    padding: 20px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.modal-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    background: transparent;
+}
+
+.modal-header h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-align: center;
+    width: 100%;
+    margin-left: 24px;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+    color: #9ca3af;
+}
+
+.close-btn:hover {
+    color: var(--danger);
+}
+
+/* Wadah Kamera Kotak Rasio Pas */
+.modal-body {
+    width: 100%;
+    max-width: 460px;
+    aspect-ratio: 4 / 3; /* Rasio standar agar bounding box pas */
+    border-radius: 12px !important;
+    overflow: hidden !important;
+    margin: 20px auto;
+    border: 3px solid var(--success);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+/* Tampilan Video Utuh Kotak Tidak Terpotong */
+#videoStream {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important; /* Agar rasio gambar asli terjaga untuk koordinat AI */
+    border-radius: 0% !important;
+}
+
+.modal-footer {
+    width: 100%;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    padding-top: 12px;
+    border-top: 1px solid rgba(0,0,0,0.05);
+}
+
+/* About Section */
+.about-section {
+    margin-top: 32px;
+    padding: 40px 64px 60px 64px;
+    background: linear-gradient(135deg, rgba(232, 245, 233, 0.3) 0%, rgba(255, 255, 255, 0.5) 100%);
+}
+
+.about-title { font-size: 1.65rem; font-weight: 800; margin-bottom: 16px; }
+.about-description { font-size: 1rem; line-height: 1.7; color: #6b7280; margin-bottom: 36px; }
+
+/* Feature Cards Grid */
+.feature-cards {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 32px;
+}
+
+.feature-card {
+    display: flex;
+    flex-direction: column;
+    padding: 32px;
+    border: 2px solid rgba(47, 107, 40, 0.12);
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(47, 107, 40, 0.06);
+    transition: all 0.3s ease;
+}
+
+.feature-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-4px);
+}
+
+.feature-icon {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-bright) 100%);
+    border-radius: 14px;
+    margin-bottom: 20px;
+    color: white;
+}
+
+.feature-icon svg { width: 28px; height: 28px; }
+.feature-card-title { font-size: 1.15rem; margin-bottom: 10px; }
+.feature-card-text { font-size: 0.95rem; line-height: 1.6; color: #6b7280; }
+
+footer {
+    padding: 20px 64px;
+    text-align: center;
+    border-top: 1px solid rgba(31, 41, 55, 0.06);
+}
+
+/* =======================================================
+   MEDIA QUERIES UTK HP (RESPONSIVE TOTAL & RAPI)
+   ======================================================= */
+@media (max-width: 900px) {
+    header { padding: 0.75rem 20px; }
+    .hero { grid-template-columns: 1fr; gap: 32px; padding: 24px 20px; }
+    .about-section { padding: 32px 20px; }
+    footer { padding: 20px; }
+}
+
+@media (max-width: 640px) {
+    .section-title { font-size: 1.6rem; text-align: center; }
+    .muted { text-align: center; font-size: 0.95rem; }
+    .hero div[style*="margin-top"] { text-align: center; display: flex; flex-direction: column; gap: 12px; align-items: center; }
+    .hero div[style*="margin-top"] span { margin-left: 0 !important; }
+    .upload-card { width: 100%; min-height: 260px; padding: 20px 16px; }
+    .btn-primary, .btn-secondary { width: 100%; justify-content: center; padding: 12px 20px; }
+    #actions { flex-direction: column; width: 100%; }
+    .feature-cards { grid-template-columns: 1fr; gap: 16px; }
+    .feature-card { padding: 20px; }
+    .logo-text { font-size: 1.1rem; }
+}
+
+@media (max-width: 480px) {
+    .section-title { font-size: 1.35rem; }
+    .modal-content { padding: 12px; }
+    .modal-body { border-width: 2px; }
+}

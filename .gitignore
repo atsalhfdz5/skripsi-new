@@ -1,0 +1,10 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+.env
+
+static/uploads/*
+static/hasil_prediksi.jpg
+
+.DS_Store
