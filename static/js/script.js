@@ -164,52 +164,60 @@ document.addEventListener('DOMContentLoaded', () => {
 function startRealtime() {
     if (cameraModal) cameraModal.style.display = 'flex';
 
-    // 1. Pindai semua perangkat media input yang tersedia
-    navigator.mediaDevices.enumerateDevices()
-    .then(function(devices) {
-        // Filter hanya perangkat kamera (videoinput)
-        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+    // Langkah 1: Minta izin kamera dasar terlebih dahulu untuk membuka blokir akses label perangkat
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+    .then(function(initialStream) {
         
-        // Filter kamera belakang berdasarkan label nama (case-insensitive)
-        const backCameras = videoDevices.filter(device => {
-            const label = device.label.toLowerCase();
-            return label.includes('back') || label.includes('rear') || label.includes('lingkungan');
-        });
+        // Langkah 2: Ambil daftar seluruh kamera setelah izin diberikan
+        return navigator.mediaDevices.enumerateDevices()
+        .then(function(devices) {
+            // Matikan stream sementara tadi agar tidak bentrok
+            initialStream.getTracks().forEach(track => track.stop());
 
-        let constraints = {
-            video: {
-                facingMode: { ideal: "environment" },
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-            }
-        };
+            const videoDevices = devices.filter(device => device.kind === 'videoinput');
+            
+            // Filter kamera belakang berdasarkan teks label resmi dari sistem operasi
+            const backCameras = videoDevices.filter(device => {
+                const label = device.label.toLowerCase();
+                return label.includes('back') || label.includes('rear') || label.includes('camera 0') || label.includes('lingkungan');
+            });
 
-        // 2. Jika ditemukan lebih dari satu kamera belakang (multi-lens)
-        if (backCameras.length > 1) {
-            // Jika indeks 0 adalah 0.5x, maka lensa utama (1x) biasanya berada di indeks 1 atau setelahnya.
-            // Kita prioritaskan memilih indeks 1 untuk melompati lensa ultra-wide default.
-            const targetDevice = backCameras[1] || backCameras[0];
-            constraints.video = {
-                deviceId: { exact: targetDevice.deviceId },
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
+            let constraints = {
+                video: {
+                    facingMode: { ideal: "environment" },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
             };
-        }
 
-        return navigator.mediaDevices.getUserMedia(constraints);
+            if (backCameras.length > 0) {
+                // Pada modul kamera multi-lensa, kamera utama (1x) hampir selalu dilaporkan sebagai 
+                // device ID pertama yang terdeteksi di sistem setelah enkripsi label dibuka.
+                // Jika indeks [0] masih memicu wide, Anda bisa mengubahnya ke [1] atau [2] secara presisi di sini.
+                const mainCamera = backCameras[0]; 
+                
+                constraints.video = {
+                    deviceId: { exact: mainCamera.deviceId },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                };
+                console.log("Mengunci kamera utama:", mainCamera.label);
+            }
+
+            return navigator.mediaDevices.getUserMedia(constraints);
+        });
     })
     .then(function(stream) {
         initStream(stream);
     })
     .catch(function(err) {
-        console.warn("Gagal menggunakan spesifikasi kamera khusus, mencoba fallback standar...", err);
-        // Fallback jika enumerasi gagal atau di-block izinnya
+        console.error("Gagal mengunci spesifikasi kamera utama:", err);
+        // Fallback darurat jika seluruh metode gagal
         navigator.mediaDevices.getUserMedia({ video: true })
         .then(function(stream) {
             initStream(stream);
         })
         .catch(function(finalErr) {
-            console.error("Gagal membuka kamera: " + finalErr);
             alert("Mohon izinkan akses kamera di browser Anda!");
             if (cameraModal) cameraModal.style.display = 'none';
         });
