@@ -161,22 +161,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (tryBtn) tryBtn.addEventListener('click', () => fileInput && fileInput.click());
 
-    function startRealtime() {
+function startRealtime() {
         if (cameraModal) cameraModal.style.display = 'flex';
 
+        // Menggunakan spesifikasi resolusi standar industri untuk mengunci lensa utama (1x)
         navigator.mediaDevices.getUserMedia({ 
             video: { 
-                width: 640, 
-                height: 640,
-                facingMode: "environment" 
+                facingMode: { ideal: "environment" },
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
             } 
         })
         .then(function(stream) {
             initStream(stream);
         })
         .catch(function(err) {
-            console.warn("Kamera belakang tidak ditemukan, mencoba kamera default...", err);
-            navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 640 } })
+            console.warn("Gagal mengunci kamera utama, mencoba fallback default...", err);
+            navigator.mediaDevices.getUserMedia({ video: true })
             .then(function(stream) {
                 initStream(stream);
             })
