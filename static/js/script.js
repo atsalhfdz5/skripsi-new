@@ -162,32 +162,59 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tryBtn) tryBtn.addEventListener('click', () => fileInput && fileInput.click());
 
 function startRealtime() {
-        if (cameraModal) cameraModal.style.display = 'flex';
+    if (cameraModal) cameraModal.style.display = 'flex';
 
-        // Menggunakan spesifikasi resolusi standar industri untuk mengunci lensa utama (1x)
-        navigator.mediaDevices.getUserMedia({ 
-            video: { 
+    // 1. Pindai semua perangkat media input yang tersedia
+    navigator.mediaDevices.enumerateDevices()
+    .then(function(devices) {
+        // Filter hanya perangkat kamera (videoinput)
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        
+        // Filter kamera belakang berdasarkan label nama (case-insensitive)
+        const backCameras = videoDevices.filter(device => {
+            const label = device.label.toLowerCase();
+            return label.includes('back') || label.includes('rear') || label.includes('lingkungan');
+        });
+
+        let constraints = {
+            video: {
                 facingMode: { ideal: "environment" },
                 width: { ideal: 1280 },
                 height: { ideal: 720 }
-            } 
-        })
+            }
+        };
+
+        // 2. Jika ditemukan lebih dari satu kamera belakang (multi-lens)
+        if (backCameras.length > 1) {
+            // Jika indeks 0 adalah 0.5x, maka lensa utama (1x) biasanya berada di indeks 1 atau setelahnya.
+            // Kita prioritaskan memilih indeks 1 untuk melompati lensa ultra-wide default.
+            const targetDevice = backCameras[1] || backCameras[0];
+            constraints.video = {
+                deviceId: { exact: targetDevice.deviceId },
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            };
+        }
+
+        return navigator.mediaDevices.getUserMedia(constraints);
+    })
+    .then(function(stream) {
+        initStream(stream);
+    })
+    .catch(function(err) {
+        console.warn("Gagal menggunakan spesifikasi kamera khusus, mencoba fallback standar...", err);
+        // Fallback jika enumerasi gagal atau di-block izinnya
+        navigator.mediaDevices.getUserMedia({ video: true })
         .then(function(stream) {
             initStream(stream);
         })
-        .catch(function(err) {
-            console.warn("Gagal mengunci kamera utama, mencoba fallback default...", err);
-            navigator.mediaDevices.getUserMedia({ video: true })
-            .then(function(stream) {
-                initStream(stream);
-            })
-            .catch(function(finalErr) {
-                console.error("Gagal membuka kamera: " + finalErr);
-                alert("Mohon izinkan akses kamera di browser Anda!");
-                if (cameraModal) cameraModal.style.display = 'none';
-            });
+        .catch(function(finalErr) {
+            console.error("Gagal membuka kamera: " + finalErr);
+            alert("Mohon izinkan akses kamera di browser Anda!");
+            if (cameraModal) cameraModal.style.display = 'none';
         });
-    }
+    });
+}
 
     function initStream(stream) {
         videoStream.srcObject = stream;
