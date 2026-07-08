@@ -7,4 +7,5 @@ Pillow
 torch
 torchvision
 gunicorn
-eventlet
+gevent
+gevent-websocket

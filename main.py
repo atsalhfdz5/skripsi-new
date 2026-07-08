@@ -1,3 +1,7 @@
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", message=".*Eventlet is deprecated.*")
+
 import os
 import cv2
 import numpy as np
@@ -161,7 +165,6 @@ def handle_video_frame(data_url):
             jpg_as_text = base64.b64encode(buffer).decode('utf-8')
             response_url = f"data:image/jpeg;base64,{jpg_as_text}"
             
-            # Mengirimkan data 'penjelasan' dan 'saran' sesuai kebutuhan script.js
             emit('response_frame', {
                 'image_url': response_url,
                 'terdeteksi': hasil['terdeteksi'],
