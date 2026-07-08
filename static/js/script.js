@@ -2,6 +2,8 @@ let currentStream = null;
 let modalBackdrop = null;
 let streamInterval = null; 
 
+// Hubungan socket tetap dipertahankan jika backend membutuhkannya, 
+// namun tidak lagi digunakan untuk mengirim frame video.
 const socket = io.connect(window.location.origin);
 
 function formatBytes(bytes) {
@@ -27,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeModalBtn = document.getElementById('closeModal');
     const tryBtn = document.getElementById('tryBtn');
 
+    // Sembunyikan tombol capture di awal sebelum kamera aktif
     if (captureBtn) captureBtn.style.display = 'none';
 
     const yearEl = document.getElementById('year');
@@ -52,10 +55,14 @@ document.addEventListener('DOMContentLoaded', () => {
         submitBtn.style.display = 'none';
         if (fileInput) fileInput.value = '';
         
+        // Bersihkan teks kontainer hasil analisis halaman utama
         if (document.getElementById('textPenyakit')) document.getElementById('textPenyakit').innerText = '-';
         if (document.getElementById('textAkurasi')) document.getElementById('textAkurasi').innerText = '-';
         if (document.getElementById('textPenjelasan')) document.getElementById('textPenjelasan').innerText = 'Silakan unggah foto daun padi terlebih dahulu.';
         if (document.getElementById('textSaran')) document.getElementById('textSaran').innerText = '-';
+
+        const oldResult = document.getElementById('hasil-analisis');
+        if (oldResult) oldResult.remove();
     }
 
     if (fileInput) {
@@ -97,6 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (clearBtn) clearBtn.addEventListener('click', clearPreview);
 
+    // Endpoint Handler untuk UPLOAD FILE MANUAL via HTTP POST
     if (submitBtn) {
         submitBtn.addEventListener('click', () => {
             const file = fileInput.files[0];
@@ -161,85 +169,142 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (tryBtn) tryBtn.addEventListener('click', () => fileInput && fileInput.click());
 
-function startRealtime() {
-    if (cameraModal) cameraModal.style.display = 'flex';
+    // Fungsi Inisialisasi Kamera dengan Bypass Proteksi Enkripsi Label Kamera
+    function startRealtime() {
+        if (cameraModal) cameraModal.style.display = 'flex';
 
-    // Langkah 1: Minta izin kamera dasar terlebih dahulu untuk membuka blokir akses label perangkat
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-    .then(function(initialStream) {
-        
-        // Langkah 2: Ambil daftar seluruh kamera setelah izin diberikan
-        return navigator.mediaDevices.enumerateDevices()
-        .then(function(devices) {
-            // Matikan stream sementara tadi agar tidak bentrok
-            initialStream.getTracks().forEach(track => track.stop());
-
-            const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        // Langkah 1: Pancing izin akses kamera dasar untuk membuka enkripsi penamaan label perangkat oleh browser
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+        .then(function(initialStream) {
             
-            // Filter kamera belakang berdasarkan teks label resmi dari sistem operasi
-            const backCameras = videoDevices.filter(device => {
-                const label = device.label.toLowerCase();
-                return label.includes('back') || label.includes('rear') || label.includes('camera 0') || label.includes('lingkungan');
-            });
+            // Langkah 2: Ambil rincian modul hardware yang tersedia
+            return navigator.mediaDevices.enumerateDevices()
+            .then(function(devices) {
+                // Matikan stream pancingan agar modul perangkat kamera tidak sibuk (busy)
+                initialStream.getTracks().forEach(track => track.stop());
 
-            let constraints = {
-                video: {
-                    facingMode: { ideal: "environment" },
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                }
-            };
-
-            if (backCameras.length > 0) {
-                // Pada modul kamera multi-lensa, kamera utama (1x) hampir selalu dilaporkan sebagai 
-                // device ID pertama yang terdeteksi di sistem setelah enkripsi label dibuka.
-                // Jika indeks [0] masih memicu wide, Anda bisa mengubahnya ke [1] atau [2] secara presisi di sini.
-                const mainCamera = backCameras[0]; 
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
                 
-                constraints.video = {
-                    deviceId: { exact: mainCamera.deviceId },
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                };
-                console.log("Mengunci kamera utama:", mainCamera.label);
-            }
+                // Cari kamera belakang utama berdasarkan kecocokan label sistem operasi
+                const backCameras = videoDevices.filter(device => {
+                    const label = device.label.toLowerCase();
+                    return label.includes('back') || label.includes('rear') || label.includes('camera 0') || label.includes('lingkungan');
+                });
 
-            return navigator.mediaDevices.getUserMedia(constraints);
-        });
-    })
-    .then(function(stream) {
-        initStream(stream);
-    })
-    .catch(function(err) {
-        console.error("Gagal mengunci spesifikasi kamera utama:", err);
-        // Fallback darurat jika seluruh metode gagal
-        navigator.mediaDevices.getUserMedia({ video: true })
+                let constraints = {
+                    video: {
+                        facingMode: { ideal: "environment" },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                };
+
+                // Jika modul multi-lensa terdeteksi, kunci id kamera utama di indeks pertama [0]
+                // Catatan: Jika [0] masih memicu lensa wide pada tipe HP Anda, ubah nilai indeks ke [1]
+                if (backCameras.length > 0) {
+                    const mainCamera = backCameras[0]; 
+                    constraints.video = {
+                        deviceId: { exact: mainCamera.deviceId },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    };
+                    console.log("Mengunci kamera utama:", mainCamera.label);
+                }
+
+                return navigator.mediaDevices.getUserMedia(constraints);
+            });
+        })
         .then(function(stream) {
             initStream(stream);
         })
-        .catch(function(finalErr) {
-            alert("Mohon izinkan akses kamera di browser Anda!");
-            if (cameraModal) cameraModal.style.display = 'none';
+        .catch(function(err) {
+            console.error("Gagal mengunci spesifikasi kamera utama:", err);
+            // Fallback otomatis jika skema penargetan ID khusus ditolak/gagal
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+            .then(function(stream) {
+                initStream(stream);
+            })
+            .catch(function(finalErr) {
+                alert("Mohon izinkan akses kamera di browser Anda!");
+                if (cameraModal) cameraModal.style.display = 'none';
+            });
         });
-    });
-}
+    }
 
+    // Mengaktifkan aliran preview lokal ke elemen video tanpa pemancar interval loop socket
     function initStream(stream) {
         videoStream.srcObject = stream;
         currentStream = stream;
         videoStream.play();
         
-        streamInterval = setInterval(() => {
+        // Pastikan interval sisa loop websocket terhapus bersih
+        if (streamInterval) clearInterval(streamInterval);
+        
+        // Munculkan tombol Ambil Foto (Snapshot) ke layar interface modal
+        if (captureBtn) {
+            captureBtn.style.display = 'inline-block';
+            captureBtn.innerText = "Ambil Foto";
+            captureBtn.disabled = false;
+        }
+    }
+
+    // Fitur Pemicu Tombol Ambil Foto (SNAPSHOT) dan Kirim Data Ke Server AI via HTTP POST
+    if (captureBtn) {
+        captureBtn.addEventListener('click', () => {
             if (videoStream.readyState === videoStream.HAVE_ENOUGH_DATA && captureCanvas) {
+                // Set resolusi canvas penangkap gambar setara resolusi asli input sensor kamera
                 captureCanvas.width = videoStream.videoWidth;
                 captureCanvas.height = videoStream.videoHeight;
+                
                 const ctx = captureCanvas.getContext('2d');
                 ctx.drawImage(videoStream, 0, 0, captureCanvas.width, captureCanvas.height);
                 
-                let dataURL = captureCanvas.toDataURL('image/jpeg', 0.6);
-                socket.emit('video_frame', dataURL);
+                // Konversi tangkapan matriks kanvas ke tipe Blob data biner JPEG kualitas tinggi (90%)
+                captureCanvas.toBlob((blob) => {
+                    if (!blob) return;
+
+                    captureBtn.innerText = "Menganalisis...";
+                    captureBtn.disabled = true;
+
+                    let formData = new FormData();
+                    formData.append("image", blob, "snapshot.jpg");
+
+                    // Kirim ke endpoint analisis backend Flask
+                    fetch("/predict", {
+                        method: "POST",
+                        body: formData
+                    })
+                    .then(response => {
+                        if (!response.ok) throw new Error("HTTP error " + response.status);
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.result_image_url) {
+                            // Salin parameter teks umpan balik analisis ke komponen UI teks di dashboard Anda
+                            if (document.getElementById('textPenyakit')) document.getElementById('textPenyakit').innerText = data.nama_penyakit;
+                            if (document.getElementById('textAkurasi')) document.getElementById('textAkurasi').innerText = data.confidence;
+                            if (document.getElementById('textPenjelasan')) document.getElementById('textPenjelasan').innerText = data.deskripsi;
+                            if (document.getElementById('textSaran')) document.getElementById('textSaran').innerText = data.solusi;
+                            
+                            // Tampilkan frame statis ber-bounding box YOLO ke latar belakang monitor video preview
+                            videoStream.style.backgroundImage = `url('${data.result_image_url}?t=${new Date().getTime()}')`;
+                            videoStream.style.backgroundSize = 'cover';
+                            videoStream.style.backgroundPosition = 'center';
+                        } else {
+                            alert("Gagal memproses snapshot: " + data.error);
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error Snapshot POST:", error);
+                        alert("Terjadi kesalahan saat menyambung ke server AI.");
+                    })
+                    .finally(() => {
+                        captureBtn.innerText = "Ambil Foto";
+                        captureBtn.disabled = false;
+                    });
+                }, 'image/jpeg', 0.9);
             }
-        }, 250);
+        });
     }
 
     function stopCamera() {
@@ -262,23 +327,8 @@ function startRealtime() {
     window.closeCamera = stopCamera;
 
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && cameraModal.style.display !== 'none') {
+        if (e.key === 'Escape' && cameraModal && cameraModal.style.display !== 'none') {
             stopCamera();
         }
     });
-});
-
-socket.on('response_frame', function(data) {
-    const videoStream = document.getElementById('videoStream');
-    const cameraModal = document.getElementById('cameraModal');
-    if (data.image_url && cameraModal && cameraModal.style.display !== 'none' && videoStream) {
-        videoStream.style.backgroundImage = `url('${data.image_url}')`;
-        videoStream.style.backgroundSize = 'cover';
-        videoStream.style.backgroundPosition = 'center';
-        
-        if (document.getElementById('textPenyakit')) document.getElementById('textPenyakit').innerText = data.label;
-        if (document.getElementById('textAkurasi')) document.getElementById('textAkurasi').innerText = data.confidence;
-        if (document.getElementById('textPenjelasan')) document.getElementById('textPenjelasan').innerText = data.penjelasan;
-        if (document.getElementById('textSaran')) document.getElementById('textSaran').innerText = data.saran;
-    }
 });
