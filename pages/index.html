@@ -58,29 +58,34 @@
             </button>
         </div>
 
-        <div id="cameraModal" class="modal" style="display:none;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Buka Kamera</h3>
-            <button id="closeModal" data-close="camera" type="button" class="close-btn" onclick="document.getElementById('cameraModal').style.display='none'; if(window.closeCamera) closeCamera();">✕</button>
-        </div>
-        <div class="modal-body">
-            <video id="videoStream" autoplay playsinline></video>
-            <canvas id="captureCanvas" style="display:none;"></canvas>
+        <!-- MODAL KAMERA FINAL -->
+        <div id="cameraModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Buka Kamera</h3>
+                    <button id="closeModal" data-close="camera" type="button" class="close-btn" onclick="document.getElementById('cameraModal').style.display='none'; if(window.closeCamera) closeCamera();">✕</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Kontainer Video/Hasil -->
+                    <video id="videoStream" autoplay playsinline></video>
+                    <canvas id="captureCanvas" style="display:none;"></canvas>
 
-            <div style="margin-top: 15px; padding: 10px; background-color: #f9f9f9; text-align: left; font-size: 0.9rem; border-radius: 4px;">
-                <p><strong>Penyakit:</strong> <span id="textPenyakit">-</span></p>
-                <p><strong>Akurasi:</strong> <span id="textAkurasi">-</span></p>
-                <p><strong>Penjelasan:</strong> <span id="textPenjelasan">-</span></p>
-                <p><strong>Saran:</strong> <span id="textSaran">-</span></p>
+                    <!-- Tempat teks hasil analisis -->
+                    <div id="hasil-kamera-text" style="margin-top: 15px; padding: 10px; background-color: #f9f9f9; text-align: left; font-size: 0.9rem; border-radius: 4px;">
+                        <p><strong>Penyakit:</strong> <span id="textPenyakit">-</span></p>
+                        <p><strong>Akurasi:</strong> <span id="textAkurasi">-</span></p>
+                        <p><strong>Penjelasan:</strong> <span id="textPenjelasan">-</span></p>
+                        <p><strong>Saran:</strong> <span id="textSaran">-</span></p>
+                    </div>
+                </div>
+
+                <!-- Susunan tombol kontrol modal kamera -->
+                <div class="modal-footer" style="margin-top: 15px; display: flex; gap: 10px; justify-content: center;">
+                    <button id="captureBtn" type="button" class="btn-primary" style="padding:6px 10px; font-size:0.9rem;">Jepret Foto</button>
+                    <button id="stopCameraBtn" type="button" class="btn-secondary" style="padding:6px 10px; font-size:0.9rem;">Tutup</button>
+                </div>
             </div>
         </div>
-        <div class="modal-footer">
-            <button id="captureBtn" type="button" class="btn-primary" style="padding:6px 10px; font-size:0.9rem;">Ambil Foto</button>
-            <button id="stopCameraBtn" type="button" class="btn-secondary" style="padding:6px 10px; font-size:0.9rem;">Tutup</button>
-        </div>
-    </div>
-</div>
 
         <section class="max-w-5xl mx-auto mt-12 px-4 mb-16">
             <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Kenali Penyakit Padi</h2>
@@ -143,6 +148,7 @@
                 </article>
             </div>
         </section>
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
     <script src="/static/js/script.js"></script>
