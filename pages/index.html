@@ -44,6 +44,7 @@
                         <button id="clearBtn" type="button" class="btn-secondary" style="display:none">Hapus</button>
                         <button id="submitBtn" type="button" class="btn-primary" style="display:none">Kirim ke AI</button>
                     </div>
+                    <div id="uploadResult" style="display:none; width:100%;"></div>
                 </div>
             </aside>
         </main>
@@ -71,7 +72,7 @@
                     <canvas id="captureCanvas" style="display:none;"></canvas>
 
                     <!-- Tempat teks hasil analisis -->
-                    <div id="hasil-kamera-text" style="margin-top: 15px; padding: 10px; background-color: #f9f9f9; text-align: left; font-size: 0.9rem; border-radius: 4px;">
+                    <div id="hasil-kamera-text" class="confidence-box">
                         <p><strong>Penyakit:</strong> <span id="textPenyakit">-</span></p>
                         <p><strong>Akurasi:</strong> <span id="textAkurasi">-</span></p>
                         <p><strong>Penjelasan:</strong> <span id="textPenjelasan">-</span></p>
@@ -81,7 +82,7 @@
 
                 <!-- Susunan tombol kontrol modal kamera -->
                 <div class="modal-footer" style="margin-top: 15px; display: flex; gap: 10px; justify-content: center;">
-                    <button id="captureBtn" type="button" class="btn-primary" style="padding:6px 10px; font-size:0.9rem;">Jepret Foto</button>
+                    <button id="captureBtn" type="button" class="btn-primary" style="padding:6px 10px; font-size:0.9rem;">📸 Jepret</button>
                     <button id="stopCameraBtn" type="button" class="btn-secondary" style="padding:6px 10px; font-size:0.9rem;">Tutup</button>
                 </div>
             </div>

@@ -58,6 +58,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const oldResult = document.getElementById('hasil-analisis');
         if (oldResult) oldResult.remove();
+        const uploadResult = document.getElementById('uploadResult');
+        if (uploadResult) { uploadResult.style.display = 'none'; uploadResult.innerHTML = ''; }
     }
 
     if (fileInput) {
@@ -190,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (captureBtn) {
             captureBtn.style.display = 'inline-block';
-            captureBtn.innerText = "Ambil Foto";
+            captureBtn.textContent = "📸 Jepret";
             captureBtn.disabled = false;
         }
     }
@@ -231,23 +233,56 @@ document.addEventListener('DOMContentLoaded', () => {
             return response.json();
         })
         .then(data => {
-            if (data.result_image_url) {
-                // Tampilkan teks hasil analisis ke komponen UI Modal Kamera
-                if (document.getElementById('textPenyakit')) document.getElementById('textPenyakit').innerText = data.nama_penyakit;
-                if (document.getElementById('textAkurasi')) document.getElementById('textAkurasi').innerText = data.confidence;
-                if (document.getElementById('textPenjelasan')) document.getElementById('textPenjelasan').innerText = data.deskripsi;
-                if (document.getElementById('textSaran')) document.getElementById('textSaran').innerText = data.solusi;
-                
-                if (isSnapshotMode) {
-                    // Pasang gambar hasil deteksi bounding box YOLO ke penampil video kamera
-                    videoStream.style.backgroundImage = `url('${data.result_image_url}?t=${new Date().getTime()}')`;
-                    videoStream.style.backgroundSize = 'cover';
-                    videoStream.style.backgroundPosition = 'center';
-                } else {
-                    preview.src = data.result_image_url + "?t=" + new Date().getTime();
+            if (isSnapshotMode) {
+                // Update teks di modal kamera
+                const elPenyakit   = document.getElementById('textPenyakit');
+                const elAkurasi    = document.getElementById('textAkurasi');
+                const elPenjelasan = document.getElementById('textPenjelasan');
+                const elSaran      = document.getElementById('textSaran');
+                const confBox      = document.getElementById('hasil-kamera-text');
+
+                if (elPenyakit)   elPenyakit.innerText   = (data.terdeteksi ? "✅ " : "⚠️ ") + data.nama_penyakit;
+                if (elAkurasi)    elAkurasi.innerText    = data.confidence;
+                if (elPenjelasan) elPenjelasan.innerText = data.deskripsi;
+                if (elSaran)      elSaran.innerText      = data.solusi;
+
+                if (confBox) {
+                    confBox.classList.remove('detected', 'not-detected');
+                    confBox.classList.add(data.terdeteksi ? 'detected' : 'not-detected');
+                }
+
+                // Tampilkan gambar hasil bounding box di video stream
+                if (data.result_image_url) {
+                    let img = document.getElementById('captureResult');
+                    if (!img) {
+                        img = document.createElement('img');
+                        img.id = 'captureResult';
+                        img.style.cssText = 'width:100%; border-radius:8px; margin-top:6px;';
+                        videoStream.parentNode.insertBefore(img, videoStream.nextSibling);
+                    }
+                    img.src = data.result_image_url + '?t=' + new Date().getTime();
                 }
             } else {
-                alert("Gagal memproses analisis: " + data.error);
+                // Update kotak hasil di bawah kartu upload
+                const resultDiv = document.getElementById('uploadResult');
+                if (resultDiv) {
+                    resultDiv.className = 'upload-result ' + (data.terdeteksi ? 'detected' : 'not-detected');
+                    if (data.terdeteksi) {
+                        resultDiv.innerHTML = `
+                            <p><strong>✅ ${data.nama_penyakit}</strong></p>
+                            <p><strong>Akurasi:</strong> ${data.confidence}</p>
+                            <p><strong>Deskripsi:</strong> ${data.deskripsi}</p>
+                            <p><strong>Solusi:</strong> ${data.solusi}</p>
+                            ${data.result_image_url ? `<img src="${data.result_image_url}?t=${new Date().getTime()}" alt="Hasil deteksi">` : ''}
+                        `;
+                    } else {
+                        resultDiv.innerHTML = `<p>⚠️ <strong>${data.nama_penyakit}</strong></p><p>${data.deskripsi}</p>`;
+                    }
+                    resultDiv.style.display = 'block';
+                }
+                if (data.result_image_url) {
+                    preview.src = data.result_image_url + '?t=' + new Date().getTime();
+                }
             }
         })
         .catch(error => {
@@ -255,7 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
             alert("Terjadi kesalahan saat menyambung ke server AI.");
         })
         .finally(() => {
-            buttonComponent.innerText = textAwal;
+            buttonComponent.textContent = isSnapshotMode ? "📸 Jepret Lagi" : textAwal;
             buttonComponent.disabled = false;
         });
     }

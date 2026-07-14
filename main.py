@@ -21,9 +21,21 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Load model YOLO (best.pt)
 path_model = os.path.join(base_dir, 'best.pt')
-model = YOLO(path_model)
+model = None
 
-THRESHOLD_AKURASI = 0.40
+def get_model():
+    global model
+    if model is None:
+        try:
+            model = YOLO(path_model)
+            print("Model dimuat:", path_model)
+            print("Nama kelas:", model.names)
+        except Exception as e:
+            print(f"Gagal memuat model: {e}")
+            model = None
+    return model
+
+THRESHOLD_AKURASI = 0.25
 
 # Database Penyakit Padi Global agar sinkron dengan Upload & Kamera
 INFO_PENYAKIT = {
@@ -52,7 +64,10 @@ def core_proses_ai(image_bytes):
         if img_asli is None:
             return {'terdeteksi': False, 'label': 'Gambar Korup', 'score': 0, 'penjelasan': '', 'saran': '', 'img_output': None}
 
-        results = model(img_asli, conf=THRESHOLD_AKURASI)[0]
+        m = get_model()
+        if m is None:
+            return {'terdeteksi': False, 'label': 'Model Error', 'score': 0, 'penjelasan': 'Model tidak tersedia.', 'saran': '-', 'img_output': None}
+        results = m(img_asli, conf=THRESHOLD_AKURASI)[0]
         terdeteksi_valid = False
         label_tertinggi = "Tidak Terdeteksi"
         score_tertinggi = 0.0
@@ -64,7 +79,7 @@ def core_proses_ai(image_bytes):
             xmin, ymin, xmax, ymax = map(int, box.xyxy[0])
             confidence = float(box.conf[0])
             class_idx = int(box.cls[0])
-            pred_label = model.names[class_idx]
+            pred_label = m.names[class_idx]
 
             terdeteksi_valid = True
             if confidence > score_tertinggi:
@@ -108,9 +123,15 @@ def predict():
 
     file_bytes = np.frombuffer(file.read(), np.uint8)
     img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+    if img is None:
+        return jsonify({'error': 'Gambar tidak valid'}), 400
     img_clean = img.copy()
 
-    results = model(img, conf=0.45, iou=0.45)[0]
+    m = get_model()
+    if m is None:
+        return jsonify({'error': 'Model tidak tersedia saat ini.'}), 503
+
+    results = m(img, conf=0.30, iou=0.45)[0]
     
     ada_penyakit = len(results.boxes) > 0 and len(results.boxes) <= 4
     deskripsi_penyakit = "Sistem tidak mendeteksi adanya gejala penyakit tanaman padi pada foto ini."
@@ -127,11 +148,12 @@ def predict():
             coords = box.xyxy[0].tolist()
             x1, y1, x2, y2 = int(coords[0]), int(coords[1]), int(coords[2]), int(coords[3])
 
-            if label in INFO_PENYAKIT and conf > tingkat_kepercayaan:
+            label_norm = label.replace(' ', '_').replace('-', '_')
+            if label_norm in INFO_PENYAKIT and conf > tingkat_kepercayaan:
                 tingkat_kepercayaan = conf
-                nama_penyakit = INFO_PENYAKIT[label]['nama']
-                deskripsi_penyakit = INFO_PENYAKIT[label]['desc']
-                solusi_penyakit = INFO_PENYAKIT[label]['solusi']
+                nama_penyakit = INFO_PENYAKIT[label_norm]['nama']
+                deskripsi_penyakit = INFO_PENYAKIT[label_norm]['desc']
+                solusi_penyakit = INFO_PENYAKIT[label_norm]['solusi']
 
                 cv2.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), 4)
                 cv2.putText(img, f"{label} {conf:.2f}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
