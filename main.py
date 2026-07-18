@@ -67,41 +67,45 @@ def core_proses_ai(image_bytes):
         m = get_model()
         if m is None:
             return {'terdeteksi': False, 'label': 'Model Error', 'score': 0, 'penjelasan': 'Model tidak tersedia.', 'saran': '-', 'img_output': None}
+        
         results = m(img_asli, conf=THRESHOLD_AKURASI)[0]
         terdeteksi_valid = False
-        label_tertinggi = "Tidak Terdeteksi"
+        label_tertinggi = None
         score_tertinggi = 0.0
 
-        if len(results.boxes) > 5:
-            return {'terdeteksi': False, 'label': 'Tidak Terdeteksi', 'score': 0, 'penjelasan': 'Sistem mendeteksi terlalu banyak objek acak.', 'saran': '-', 'img_output': img_asli}
-
         for box in results.boxes:
-            xmin, ymin, xmax, ymax = map(int, box.xyxy[0])
             confidence = float(box.conf[0])
             class_idx = int(box.cls[0])
             pred_label = m.names[class_idx]
+            label_norm = pred_label.replace(' ', '_').replace('-', '_')
 
-            terdeteksi_valid = True
-            if confidence > score_tertinggi:
-                score_tertinggi = confidence
-                label_tertinggi = pred_label
-            
-            cv2.rectangle(img_asli, (xmin, ymin), (xmax, ymax), (0, 0, 255), 2)
-            teks = f"{pred_label} {confidence:.2f}"
-            cv2.putText(img_asli, teks, (xmin, ymin - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1, cv2.LINE_AA)
+            # Filter: Hanya proses jika label ada di INFO_PENYAKIT
+            if label_norm in INFO_PENYAKIT:
+                terdeteksi_valid = True
+                if confidence > score_tertinggi:
+                    score_tertinggi = confidence
+                    label_tertinggi = label_norm
+                
+                xmin, ymin, xmax, ymax = map(int, box.xyxy[0])
+                cv2.rectangle(img_asli, (xmin, ymin), (xmax, ymax), (0, 0, 255), 2)
+                teks = f"{INFO_PENYAKIT[label_norm]['nama']} {confidence:.2f}"
+                cv2.putText(img_asli, teks, (xmin, ymin - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1, cv2.LINE_AA)
 
-        info = INFO_PENYAKIT.get(label_tertinggi, {
-            'nama': 'Tidak Terdeteksi',
-            'desc': 'Sistem tidak mendeteksi adanya gejala penyakit tanaman padi pada foto ini.',
-            'solusi': '-'
-        })
+        if terdeteksi_valid and label_tertinggi:
+            info = INFO_PENYAKIT[label_tertinggi]
+        else:
+            info = {
+                'nama': 'Tidak Terdeteksi',
+                'desc': 'Sistem tidak mendeteksi adanya gejala penyakit tanaman padi pada foto ini.',
+                'solusi': '-'
+            }
 
         return {
             'terdeteksi': terdeteksi_valid,
             'label': info['nama'] if terdeteksi_valid else "Tidak Terdeteksi",
             'score': score_tertinggi,
-            'penjelasan': info['desc'] if terdeteksi_valid else "Sistem tidak mendeteksi adanya gejala penyakit tanaman padi pada foto ini.",
-            'saran': info['solusi'] if terdeteksi_valid else "-",
+            'penjelasan': info['desc'],
+            'saran': info['solusi'],
             'img_output': img_asli
         }
     except Exception as e:
@@ -133,35 +137,32 @@ def predict():
 
     results = m(img, conf=0.30, iou=0.45)[0]
     
-    ada_penyakit = len(results.boxes) > 0 and len(results.boxes) <= 4
+    ada_penyakit = False
     deskripsi_penyakit = "Sistem tidak mendeteksi adanya gejala penyakit tanaman padi pada foto ini."
     solusi_penyakit = "Silakan coba unggah kembali foto daun tanaman padi yang lebih jelas untuk analisis ulang."
     tingkat_kepercayaan = 0.0
     nama_penyakit = "Tidak Terdeteksi"
 
-    if ada_penyakit:
-        for box in results.boxes:
-            conf = float(box.conf[0])
-            cls_id = int(box.cls[0])
-            label = results.names[cls_id]
+    for box in results.boxes:
+        conf = float(box.conf[0])
+        cls_id = int(box.cls[0])
+        label = results.names[cls_id]
+        label_norm = label.replace(' ', '_').replace('-', '_')
 
-            coords = box.xyxy[0].tolist()
-            x1, y1, x2, y2 = int(coords[0]), int(coords[1]), int(coords[2]), int(coords[3])
-
-            label_norm = label.replace(' ', '_').replace('-', '_')
-            if label_norm in INFO_PENYAKIT and conf > tingkat_kepercayaan:
+        # Filter: Hanya proses jika label ada di INFO_PENYAKIT
+        if label_norm in INFO_PENYAKIT:
+            ada_penyakit = True
+            if conf > tingkat_kepercayaan:
                 tingkat_kepercayaan = conf
                 nama_penyakit = INFO_PENYAKIT[label_norm]['nama']
                 deskripsi_penyakit = INFO_PENYAKIT[label_norm]['desc']
                 solusi_penyakit = INFO_PENYAKIT[label_norm]['solusi']
 
-                cv2.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), 4)
-                cv2.putText(img, f"{label} {conf:.2f}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+            coords = box.xyxy[0].tolist()
+            x1, y1, x2, y2 = int(coords[0]), int(coords[1]), int(coords[2]), int(coords[3])
+            cv2.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), 4)
+            cv2.putText(img, f"{INFO_PENYAKIT[label_norm]['nama']} {conf:.2f}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
     
-    if tingkat_kepercayaan == 0.0:
-        ada_penyakit = False
-        nama_penyakit = "Tidak Terdeteksi"
-
     os.makedirs(os.path.join(base_dir, 'static'), exist_ok=True)
     output_path = "static/hasil_prediksi.jpg"
     cv2.imwrite(os.path.join(base_dir, output_path), img if ada_penyakit else img_clean)
@@ -174,7 +175,6 @@ def predict():
         'deskripsi': deskripsi_penyakit,
         'solusi': solusi_penyakit
     })
-
 @socketio.on('video_frame')
 def handle_video_frame(data_url):
     try:

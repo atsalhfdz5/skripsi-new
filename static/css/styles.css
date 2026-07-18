@@ -1,4 +1,5 @@
-/* * styles.css
+/*
+ * styles.css
  * Custom styles untuk SahabatPetani AI Landing Page
  */
 
@@ -261,7 +262,7 @@ header {
     background: white;
     border-radius: 20px;
     width: 100%;
-    max-width: 500px; /* Lebar diperluas agar kotak proporsional */
+    max-width: 500px;
     padding: 20px;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
     display: flex;
@@ -303,10 +304,10 @@ header {
 .modal-body {
     width: 100%;
     max-width: 460px;
-    aspect-ratio: 4 / 3; /* Rasio standar agar bounding box pas */
+    aspect-ratio: 4 / 3; 
     border-radius: 12px !important;
     overflow: hidden !important;
-    margin: 20px auto;
+    margin: 20px auto 10px auto;
     border: 3px solid var(--success);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
     background: #000;
@@ -316,12 +317,85 @@ header {
     position: relative;
 }
 
-/* Tampilan Video Utuh Kotak Tidak Terpotong */
+/* Tampilan Video Utuh Kotak Tidak Terpotong & Tidak Distorsi */
 #videoStream {
     width: 100% !important;
     height: 100% !important;
-    object-fit: contain !important; /* Agar rasio gambar asli terjaga untuk koordinat AI */
+    object-fit: cover !important; /* Wajib cover agar proporsi wajah/daun tidak melebar */
     border-radius: 0% !important;
+}
+
+/* =======================================================
+   KONTROL ZOOM KAMERA & HASIL JEPRET
+   ======================================================= */
+.zoom-container {
+    width: 100%;
+    max-width: 460px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+    padding: 0 10px;
+}
+
+.zoom-container label {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+/* Kustomisasi Slider (Input Range) */
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    flex-grow: 1;
+    height: 6px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: transform 0.1s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    border: none;
+}
+
+input[type="range"]:disabled::-webkit-slider-thumb {
+    background: #9ca3af;
+    cursor: not-allowed;
+}
+
+/* Gambar hasil jepret di dalam modal */
+#captureResult {
+    width: 100%;
+    max-width: 460px;
+    aspect-ratio: 4 / 3;
+    object-fit: contain;
+    border-radius: 12px;
+    margin-top: 12px;
+    border: 2px solid var(--accent-thin);
+    background: #f9fafb;
 }
 
 .modal-footer {

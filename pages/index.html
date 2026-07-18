@@ -19,10 +19,10 @@
         <main class="hero">
             <section>
                 <h1 class="section-title">AI untuk Petani — Solusi Deteksi Cepat</h1>
-                <p class="muted">Unggah foto tanaman Anda. Sistem akan menganalisis gambar — disini hanya tampilan UI (tanpa logika AI).</p>
+                <p class="muted">Unggah foto tanaman Anda. Sistem akan menganalisis gambar untuk mendeteksi penyakit padi secara instan.</p>
                 <div style="margin-top:18px;">
                     <button class="btn-primary" id="tryBtn">Unggah Foto</button>
-                    <span style="margin-left:12px; color:#6b7280; font-size:0.95rem">Gambar untuk pratinjau sebelum analisis</span>
+                    <span style="margin-left:12px; color:#6b7280; font-size:0.95rem">Atau gunakan kamera untuk analisis langsung</span>
                 </div>
             </section>
 
@@ -66,24 +66,31 @@
                     <h3>Buka Kamera</h3>
                     <button id="closeModal" data-close="camera" type="button" class="close-btn" onclick="document.getElementById('cameraModal').style.display='none'; if(window.closeCamera) closeCamera();">✕</button>
                 </div>
+                
+                <!-- Frame Video Utama -->
                 <div class="modal-body">
-                    <!-- Kontainer Video/Hasil -->
                     <video id="videoStream" autoplay playsinline></video>
                     <canvas id="captureCanvas" style="display:none;"></canvas>
+                </div>
 
-                    <!-- Tempat teks hasil analisis -->
-                    <div id="hasil-kamera-text" class="confidence-box">
-                        <p><strong>Penyakit:</strong> <span id="textPenyakit">-</span></p>
-                        <p><strong>Akurasi:</strong> <span id="textAkurasi">-</span></p>
-                        <p><strong>Penjelasan:</strong> <span id="textPenjelasan">-</span></p>
-                        <p><strong>Saran:</strong> <span id="textSaran">-</span></p>
-                    </div>
+                <!-- Kontrol Zoom -->
+                <div class="zoom-container">
+                    <label for="zoomSlider">Zoom:</label>
+                    <input type="range" id="zoomSlider" min="1" max="3" step="0.1" value="1" disabled>
+                </div>
+
+                <!-- Tempat teks hasil analisis -->
+                <div id="hasil-kamera-text" class="confidence-box" style="width: 100%; max-width: 460px;">
+                    <p><strong>Penyakit:</strong> <span id="textPenyakit">-</span></p>
+                    <p><strong>Akurasi:</strong> <span id="textAkurasi">-</span></p>
+                    <p><strong>Penjelasan:</strong> <span id="textPenjelasan">-</span></p>
+                    <p><strong>Saran:</strong> <span id="textSaran">-</span></p>
                 </div>
 
                 <!-- Susunan tombol kontrol modal kamera -->
-                <div class="modal-footer" style="margin-top: 15px; display: flex; gap: 10px; justify-content: center;">
-                    <button id="captureBtn" type="button" class="btn-primary" style="padding:6px 10px; font-size:0.9rem;">📸 Jepret</button>
-                    <button id="stopCameraBtn" type="button" class="btn-secondary" style="padding:6px 10px; font-size:0.9rem;">Tutup</button>
+                <div class="modal-footer" style="margin-top: 15px; display: flex; gap: 10px; justify-content: center; width: 100%; max-width: 460px;">
+                    <button id="captureBtn" type="button" class="btn-primary" style="padding:8px 16px; font-size:0.95rem; flex-grow: 1; justify-content: center;">📸 Jepret & Analisis</button>
+                    <button id="stopCameraBtn" type="button" class="btn-secondary" style="padding:8px 16px; font-size:0.95rem;">Tutup</button>
                 </div>
             </div>
         </div>
@@ -123,7 +130,7 @@
 
         <section id="about" class="about-section">
             <h2 class="about-title">Tentang SahabatPetani AI</h2>
-            <p class="about-description">SahabatPetani AI adalah alat bantu antarmuka yang dirancang untuk membantu petani mengenali masalah tanaman lebih cepat. Di sini kami menyediakan antarmuka unggah gambar yang memudahkan pengguna untuk mendapat analisis secara cepat. Versi ini hanya demo UI — tidak melakukan analisis nyata.</p>
+            <p class="about-description">SahabatPetani AI adalah alat bantu berbasis kecerdasan buatan (Computer Vision) yang dirancang untuk membantu petani mengenali masalah tanaman lebih cepat. Sistem akan mendeteksi kelas penyakit seperti Hawar Daun Bakteri, Bercak Cokelat, atau Blas Daun secara langsung dari foto Anda.</p>
             
             <div class="feature-cards">
                 <article class="feature-card">
@@ -133,8 +140,8 @@
                             <path d="M12 5v14M12 5l-4 4m4-4l4 4"/>
                         </svg>
                     </div>
-                    <h3 class="feature-card-title">Tujuan</h3>
-                    <p class="feature-card-text">Mempercepat identifikasi penyakit tanaman dan membantu keputusan bercocok tanam.</p>
+                    <h3 class="feature-card-title">Deteksi Akurat</h3>
+                    <p class="feature-card-text">Mempercepat identifikasi penyakit tanaman padi berbekal model YOLO yang telah dilatih secara khusus untuk akurasi tinggi.</p>
                 </article>
 
                 <article class="feature-card">
@@ -144,8 +151,8 @@
                             <circle cx="12" cy="12" r="9" fill="none"/>
                         </svg>
                     </div>
-                    <h3 class="feature-card-title">Cara kerja</h3>
-                    <p class="feature-card-text">Unggah foto, pratinjau tampil, lalu kirim ke sistem — simulasi untuk demo.</p>
+                    <h3 class="feature-card-title">Mudah Digunakan</h3>
+                    <p class="feature-card-text">Unggah foto dari galeri atau gunakan kamera langsung pada perangkat Anda, hasil analisis akan muncul dalam hitungan detik.</p>
                 </article>
             </div>
         </section>
