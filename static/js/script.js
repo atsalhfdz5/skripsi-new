@@ -122,8 +122,16 @@ document.addEventListener('DOMContentLoaded', () => {
             currentStream.getTracks().forEach(track => track.stop());
         }
 
+        // 1. Pancing izin dasar dan tampung stream-nya
         navigator.mediaDevices.getUserMedia({ video: true })
-        .then(() => navigator.mediaDevices.enumerateDevices())
+        .then(initialStream => {
+            // 2. Baca daftar perangkat (lensa)
+            return navigator.mediaDevices.enumerateDevices().then(devices => {
+                // 3. PENTING: Matikan stream pancingan agar hardware kamera HP tidak terkunci (bentrok)
+                initialStream.getTracks().forEach(track => track.stop());
+                return devices;
+            });
+        })
         .then(devices => {
             const videoDevices = devices.filter(device => device.kind === 'videoinput');
             let targetDeviceId = null;
@@ -149,10 +157,11 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .catch(err => {
             console.error("Gagal mengakses kamera presisi:", err);
+            // Fallback darurat jika filter lensa gagal di perangkat tertentu
             navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
             .then(stream => initStream(stream))
             .catch(() => {
-                alert("Mohon izinkan akses kamera di browser Anda!");
+                alert("Kamera gagal diakses. Pastikan tidak ada aplikasi lain (seperti WhatsApp/Kamera) yang sedang membuka kamera di latar belakang.");
                 if (cameraModal) cameraModal.style.display = 'none';
             });
         });
