@@ -1,7 +1,7 @@
 let currentStream = null;
 let modalBackdrop = null;
 let streamInterval = null; 
-let currentCameraIndex = 0; // Menyimpan indeks kamera yang aktif untuk fitur ganti lensa otomatis
+let currentCameraIndex = 0;
 
 const socket = io.connect(window.location.origin);
 
@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const stopCameraBtn = document.getElementById('stopCameraBtn');
     const closeModalBtn = document.getElementById('closeModal');
     const tryBtn = document.getElementById('tryBtn');
+    const zoomSlider = document.getElementById('zoomSlider'); 
 
     if (captureBtn) captureBtn.style.display = 'none';
 
@@ -114,69 +115,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (tryBtn) tryBtn.addEventListener('click', () => fileInput && fileInput.click());
 
-    // Fungsi Utama Buka Kamera & Deteksi Lensa Utama (1x)
     function startRealtime() {
         if (cameraModal) cameraModal.style.display = 'flex';
 
-        // Hentikan stream aktif sebelum membuka stream baru (mencegah kamera freeze/lock)
         if (currentStream) {
             currentStream.getTracks().forEach(track => track.stop());
         }
 
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-        .then(function(initialStream) {
-            return navigator.mediaDevices.enumerateDevices()
-            .then(function(devices) {
-                initialStream.getTracks().forEach(track => track.stop());
+        navigator.mediaDevices.getUserMedia({ video: true })
+        .then(() => navigator.mediaDevices.enumerateDevices())
+        .then(devices => {
+            const videoDevices = devices.filter(device => device.kind === 'videoinput');
+            let targetDeviceId = null;
 
-                const videoDevices = devices.filter(device => device.kind === 'videoinput');
-                
-                // Urutkan dan saring kamera belakang secara ketat
-                let backCameras = videoDevices.filter(device => {
-                    const label = device.label.toLowerCase();
-                    return label.includes('back') || label.includes('rear') || label.includes('camera 0') || label.includes('lingkungan');
-                });
-
-                // Jika pemfilteran string gagal, gunakan semua kamera input sebagai fallback
-                if (backCameras.length === 0) backCameras = videoDevices;
-
-                let constraints = {
-                    video: {
-                        facingMode: { ideal: "environment" },
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
+            for (const device of videoDevices) {
+                const label = device.label.toLowerCase();
+                if (label.includes('back') || label.includes('rear') || label.includes('environment')) {
+                    if (!label.includes('ultra') && !label.includes('0.5')) {
+                        targetDeviceId = device.deviceId;
+                        break;
                     }
-                };
-
-                if (backCameras.length > 0) {
-                    // Berpindah indeks kamera setiap kali tombol "Buka Kamera" ditekan kembali
-                    let targetIndex = currentCameraIndex % backCameras.length;
-                    const selectedCamera = backCameras[targetIndex];
-                    
-                    constraints.video = {
-                        deviceId: { exact: selectedCamera.deviceId },
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    };
-                    
-                    console.log(`Mengaktifkan kamera lensa indeks ke-[${targetIndex}]:`, selectedCamera.label);
-                    // Siapkan indeks berikutnya jika pengguna ingin mengganti kamera lagi
-                    currentCameraIndex++;
                 }
+            }
 
-                return navigator.mediaDevices.getUserMedia(constraints);
-            });
+            const constraints = targetDeviceId 
+                ? { video: { deviceId: { exact: targetDeviceId }, width: { ideal: 1280 }, height: { ideal: 720 } } }
+                : { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } };
+
+            return navigator.mediaDevices.getUserMedia(constraints);
         })
-        .then(function(stream) {
+        .then(stream => {
             initStream(stream);
         })
-        .catch(function(err) {
-            console.error("Gagal mengunci spesifikasi kamera khusus:", err);
+        .catch(err => {
+            console.error("Gagal mengakses kamera presisi:", err);
             navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-            .then(function(stream) {
-                initStream(stream);
-            })
-            .catch(function(finalErr) {
+            .then(stream => initStream(stream))
+            .catch(() => {
                 alert("Mohon izinkan akses kamera di browser Anda!");
                 if (cameraModal) cameraModal.style.display = 'none';
             });
@@ -188,24 +163,98 @@ document.addEventListener('DOMContentLoaded', () => {
         currentStream = stream;
         videoStream.play();
         
+        // Sembunyikan hasil jepretan sebelumnya jika ada
+        const existingImg = document.getElementById('captureResult');
+        if (existingImg) existingImg.style.display = 'none';
+
         if (streamInterval) clearInterval(streamInterval);
         
         if (captureBtn) {
             captureBtn.style.display = 'inline-block';
-            captureBtn.textContent = "📸 Jepret";
+            captureBtn.textContent = "📸 Jepret & Analisis";
             captureBtn.disabled = false;
+        }
+
+        // Logika Hybrid Zoom
+        if (zoomSlider) {
+            const track = stream.getVideoTracks()[0];
+            const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+            
+            zoomSlider.disabled = false;
+            zoomSlider.min = 1;
+            zoomSlider.max = 3;
+            zoomSlider.step = 0.1;
+            zoomSlider.value = 1;
+            videoStream.style.transform = `scale(1)`;
+            videoStream.style.transformOrigin = 'center center';
+
+            window.supportHardwareZoom = 'zoom' in capabilities;
+
+            if (window.supportHardwareZoom) {
+                zoomSlider.min = capabilities.zoom.min;
+                zoomSlider.max = capabilities.zoom.max;
+                zoomSlider.step = capabilities.zoom.step;
+                zoomSlider.value = track.getSettings().zoom || 1;
+            }
+
+            zoomSlider.oninput = () => {
+                const zoomValue = parseFloat(zoomSlider.value);
+                if (window.supportHardwareZoom) {
+                    track.applyConstraints({ advanced: [{ zoom: zoomValue }] })
+                         .catch(err => console.error("Hardware zoom error:", err));
+                } else {
+                    videoStream.style.transform = `scale(${zoomValue})`;
+                }
+            };
         }
     }
 
-    // Logika Mengambil Foto (Snapshot)
+    // Logika Mengambil Foto & Reset State Kamera
     if (captureBtn) {
         captureBtn.addEventListener('click', () => {
+            const existingImg = document.getElementById('captureResult');
+            
+            // MODE RESET: Jika gambar hasil sedang tampil, kembalikan ke live kamera utuh
+            if (existingImg && existingImg.style.display === 'block') {
+                existingImg.style.display = 'none'; // Sembunyikan overlay
+                captureBtn.textContent = "📸 Jepret & Analisis";
+                
+                // Reset teks hasil kembali bersih
+                const elPenyakit = document.getElementById('textPenyakit');
+                const elAkurasi = document.getElementById('textAkurasi');
+                const elPenjelasan = document.getElementById('textPenjelasan');
+                const elSaran = document.getElementById('textSaran');
+                const confBox = document.getElementById('hasil-kamera-text');
+
+                if (elPenyakit) elPenyakit.innerText = '-';
+                if (elAkurasi) elAkurasi.innerText = '-';
+                if (elPenjelasan) elPenjelasan.innerText = '-';
+                if (elSaran) elSaran.innerText = '-';
+                if (confBox) confBox.className = 'confidence-box';
+                
+                return; // Batalkan proses dan biarkan user membidik lagi
+            }
+
+            // MODE JEPRET: Tangkap frame dan kirim ke API
             if (videoStream.readyState === videoStream.HAVE_ENOUGH_DATA && captureCanvas) {
                 captureCanvas.width = videoStream.videoWidth;
                 captureCanvas.height = videoStream.videoHeight;
                 
                 const ctx = captureCanvas.getContext('2d');
-                ctx.drawImage(videoStream, 0, 0, captureCanvas.width, captureCanvas.height);
+                const currentScale = zoomSlider ? parseFloat(zoomSlider.value) : 1;
+
+                if (!window.supportHardwareZoom && currentScale > 1) {
+                    const w = captureCanvas.width;
+                    const h = captureCanvas.height;
+                    const sw = w / currentScale;
+                    const sh = h / currentScale;
+                    const sx = (w - sw) / 2;
+                    const sy = (h - sh) / 2;
+                    
+                    ctx.drawImage(videoStream, sx, sy, sw, sh, 0, 0, w, h);
+                } else {
+                    ctx.drawImage(videoStream, 0, 0, captureCanvas.width, captureCanvas.height);
+                }
                 
                 captureCanvas.toBlob((blob) => {
                     if (!blob) return;
@@ -215,7 +264,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Fungsi Berbagi Pengiriman Form Data ke API Backend Flask
     function eksekusiPrediksi(fileOrBlob, buttonComponent, isSnapshotMode) {
         const textAwal = buttonComponent.innerText;
         buttonComponent.innerText = "Menganalisis...";
@@ -234,7 +282,6 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .then(data => {
             if (isSnapshotMode) {
-                // Update teks di modal kamera
                 const elPenyakit   = document.getElementById('textPenyakit');
                 const elAkurasi    = document.getElementById('textAkurasi');
                 const elPenjelasan = document.getElementById('textPenjelasan');
@@ -251,19 +298,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     confBox.classList.add(data.terdeteksi ? 'detected' : 'not-detected');
                 }
 
-                // Tampilkan gambar hasil bounding box di video stream
+                // Tampilkan gambar OVERLAY absolut, di atas kamera agar tidak geser
                 if (data.result_image_url) {
                     let img = document.getElementById('captureResult');
                     if (!img) {
                         img = document.createElement('img');
                         img.id = 'captureResult';
-                        img.style.cssText = 'width:100%; border-radius:8px; margin-top:6px;';
-                        videoStream.parentNode.insertBefore(img, videoStream.nextSibling);
+                        // Gaya absolute agar menutupi video tanpa merusak layout kotak
+                        img.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 10; border-radius: inherit;';
+                        videoStream.parentNode.appendChild(img);
                     }
                     img.src = data.result_image_url + '?t=' + new Date().getTime();
+                    img.style.display = 'block'; 
                 }
             } else {
-                // Update kotak hasil di bawah kartu upload
                 const resultDiv = document.getElementById('uploadResult');
                 if (resultDiv) {
                     resultDiv.className = 'upload-result ' + (data.terdeteksi ? 'detected' : 'not-detected');
@@ -304,12 +352,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (videoStream) {
             videoStream.srcObject = null;
-            videoStream.style.backgroundImage = 'none';
+            videoStream.style.transform = 'scale(1)';
         }
+        
+        // Bersihkan riwayat gambar saat modal ditutup
+        const existingImg = document.getElementById('captureResult');
+        if (existingImg) existingImg.style.display = 'none';
     }
 
     if (cameraBtn) cameraBtn.addEventListener('click', startRealtime);
     if (stopCameraBtn) stopCameraBtn.addEventListener('click', stopCamera);
+    if (closeModalBtn) closeModalBtn.addEventListener('click', stopCamera);
 
     window.closeCamera = stopCamera;
 
