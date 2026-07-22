@@ -69,7 +69,10 @@
                 
                 <!-- Frame Video Utama -->
                 <div class="modal-body">
-                    <video id="videoStream" autoplay playsinline></video>
+                    <div id="camera-container" style="position: relative; display: inline-block; width: 100%; overflow: hidden;">
+                        <video id="videoStream" autoplay playsinline muted style="width: 100%; display: block;"></video>
+                        <div id="focus-indicator" style="display: none; position: absolute; border: 2px solid #FFD700; width: 60px; height: 60px; transform: translate(-50%, -50%); pointer-events: none; border-radius: 8px; z-index: 10;"></div>
+                    </div>
                     <canvas id="captureCanvas" style="display:none;"></canvas>
                 </div>
 

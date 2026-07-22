@@ -29,6 +29,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const tryBtn = document.getElementById('tryBtn');
     const zoomSlider = document.getElementById('zoomSlider'); 
 
+    // Elemen & Logika UI Tap-to-Focus
+    const cameraContainer = document.getElementById('camera-container');
+    const focusIndicator = document.getElementById('focus-indicator');
+    let focusTimeout;
+
+    if (cameraContainer && focusIndicator) {
+        cameraContainer.addEventListener('click', (e) => {
+            clearTimeout(focusTimeout);
+            
+            focusIndicator.style.left = `${e.offsetX}px`;
+            focusIndicator.style.top = `${e.offsetY}px`;
+            focusIndicator.style.display = 'block';
+            
+            focusIndicator.animate([
+                { transform: 'translate(-50%, -50%) scale(1.3)', opacity: 0.3 },
+                { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 }
+            ], { duration: 300, easing: 'ease-out' });
+            
+            focusTimeout = setTimeout(() => {
+                focusIndicator.style.display = 'none';
+            }, 1500);
+        });
+    }
+
     if (captureBtn) captureBtn.style.display = 'none';
 
     // Handler Upload Manual

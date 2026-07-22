@@ -34,6 +34,7 @@ def get_model():
             print(f"Gagal memuat model: {e}")
             model = None
     return model
+   #tambahkan validasi
 
 THRESHOLD_AKURASI = 0.25
 
