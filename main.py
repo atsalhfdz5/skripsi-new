@@ -9,7 +9,7 @@ import base64
 from flask import Flask, request, jsonify, render_template
 from flask_socketio import SocketIO, emit
 from ultralytics import YOLO
-
+from threading import Lock
 base_dir = os.path.abspath(os.path.dirname(__file__))
 folder_page = os.path.join(base_dir, 'pages')
 
@@ -22,6 +22,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 # Load model YOLO (best.pt)
 path_model = os.path.join(base_dir, 'best.pt')
 model = None
+model_lock = Lock()
 
 def get_model():
     global model
@@ -63,6 +64,17 @@ def core_proses_ai(image_bytes):
     try:
         nparr = np.frombuffer(image_bytes, np.uint8)
         img_asli = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+        if img_asli is not None:
+            h, w = img_asli.shape[:2]
+
+            if max(h, w) > 1280:
+                scale = 1280 / max(h, w)
+                img_asli = cv2.resize(
+                    img_asli,
+                    (int(w * scale), int(h * scale)),
+                    interpolation=cv2.INTER_AREA
+                )
         
         if img_asli is None:
             return {'terdeteksi': False, 'label': 'Gambar Korup', 'score': 0, 'penjelasan': '', 'saran': '', 'img_output': None}
@@ -71,7 +83,21 @@ def core_proses_ai(image_bytes):
         if m is None:
             return {'terdeteksi': False, 'label': 'Model Error', 'score': 0, 'penjelasan': 'Model tidak tersedia.', 'saran': '-', 'img_output': None}
         
-        results = m(img_asli, conf=THRESHOLD_AKURASI)[0]
+        with model_lock:
+            hasil = m(img_asli, conf=THRESHOLD_AKURASI)
+
+        if len(hasil) == 0:
+            return {
+                'terdeteksi': False,
+                'label': 'Tidak Terdeteksi',
+                'score': 0,
+                'penjelasan': '',
+                'saran': '',
+                'img_output': img_asli
+            }
+
+        results = hasil[0]
+
         terdeteksi_valid = False
         label_tertinggi = None
         score_tertinggi = 0.0
@@ -138,7 +164,15 @@ def predict():
     if m is None:
         return jsonify({'error': 'Model tidak tersedia saat ini.'}), 503
 
-    results = m(img, conf=THRESHOLD_AKURASI, iou=0.45)[0]
+    with model_lock:
+        hasil = m(img, conf=THRESHOLD_AKURASI, iou=0.45)
+
+    if len(hasil) == 0:
+        return jsonify({
+        'error': 'Tidak ada hasil prediksi'
+        }), 500
+
+    results = hasil[0]
     
     ada_penyakit = False
     deskripsi_penyakit = "Sistem tidak mendeteksi adanya gejala penyakit tanaman padi pada foto ini."
