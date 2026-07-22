@@ -37,7 +37,8 @@ def get_model():
     return model
    #tambahkan validasi
 
-THRESHOLD_AKURASI = 0.40
+THRESHOLD_AKURASI = 0.25
+MIN_CONF_VALID = 0.45
 
 # Database Penyakit Padi Global agar sinkron dengan Upload & Kamera
 INFO_PENYAKIT = {
@@ -62,17 +63,6 @@ def core_proses_ai(image_bytes):
     try:
         nparr = np.frombuffer(image_bytes, np.uint8)
         img_asli = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-        if img_asli is not None:
-            h, w = img_asli.shape[:2]
-
-            if max(h, w) > 1280:
-                scale = 1280 / max(h, w)
-                img_asli = cv2.resize(
-                    img_asli,
-                    (int(w * scale), int(h * scale)),
-                    interpolation=cv2.INTER_AREA
-                )
         
         if img_asli is None:
             return {'terdeteksi': False, 'label': 'Gambar Korup', 'score': 0, 'penjelasan': '', 'saran': '', 'img_output': None}
@@ -82,7 +72,11 @@ def core_proses_ai(image_bytes):
             return {'terdeteksi': False, 'label': 'Model Error', 'score': 0, 'penjelasan': 'Model tidak tersedia.', 'saran': '-', 'img_output': None}
         
         with model_lock:
-            hasil = m(img_asli, conf=THRESHOLD_AKURASI)
+            hasil = m(
+                img_asli,
+                conf=THRESHOLD_AKURASI,
+                imgsz=832
+            )
 
         if len(hasil) == 0:
             return {
@@ -107,7 +101,7 @@ def core_proses_ai(image_bytes):
             label_norm = pred_label.replace(' ', '_').replace('-', '_')
 
             # Filter: Hanya proses jika label ada di INFO_PENYAKIT
-            if label_norm in INFO_PENYAKIT:
+            if label_norm in INFO_PENYAKIT and confidence >= MIN_CONF_VALID:
                 terdeteksi_valid = True
                 if confidence > score_tertinggi:
                     score_tertinggi = confidence
@@ -163,7 +157,12 @@ def predict():
         return jsonify({'error': 'Model tidak tersedia saat ini.'}), 503
 
     with model_lock:
-        hasil = m(img, conf=THRESHOLD_AKURASI, iou=0.45)
+        hasil = m(
+            img,
+            conf=THRESHOLD_AKURASI,
+            iou=0.45,
+            imgsz=832
+        )
 
     if len(hasil) == 0:
         return jsonify({
