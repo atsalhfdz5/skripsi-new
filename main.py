@@ -9,7 +9,6 @@ import base64
 from flask import Flask, request, jsonify, render_template
 from flask_socketio import SocketIO, emit
 from ultralytics import YOLO
-from PIL import Image, ImageOps
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 folder_page = os.path.join(base_dir, 'pages')
@@ -20,7 +19,6 @@ app = Flask(__name__,
             static_url_path='')
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Load model YOLO (best.pt)
 path_model = os.path.join(base_dir, 'best.pt')
 model = None
 
@@ -37,7 +35,6 @@ def get_model():
 
 THRESHOLD_AKURASI = 0.25
 
-# Database Penyakit Padi Global
 INFO_PENYAKIT = {
     'Bacterial_Leaf_Blight': {
         'nama': 'Hawar Daun Bakteri (Bacterial Leaf Blight)',
@@ -68,7 +65,7 @@ def core_proses_ai(image_bytes):
         if m is None:
             return {'terdeteksi': False, 'label': 'Model Error', 'score': 0, 'penjelasan': 'Model tidak tersedia.', 'saran': '-', 'img_output': None}
         
-        results = m(img_asli, conf=THRESHOLD_AKURASI, imgsz=640)[0]
+        results = m(img_asli, conf=THRESHOLD_AKURASI)[0]
         
         terdeteksi_valid = False
         best_conf = 0.0
@@ -93,9 +90,10 @@ def core_proses_ai(image_bytes):
         if terdeteksi_valid:
             info = INFO_PENYAKIT[best_label_norm]
             xmin, ymin, xmax, ymax = map(int, best_box)
-            cv2.rectangle(img_asli, (xmin, ymin), (xmax, ymax), (0, 0, 255), 1)
+            # Ketebalan kotak 2, font scale 0.5, ketebalan teks 2
+            cv2.rectangle(img_asli, (xmin, ymin), (xmax, ymax), (0, 0, 255), 2)
             teks = f"{best_label_asli} {best_conf:.2f}"
-            cv2.putText(img_asli, teks, (xmin, ymin - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1, cv2.LINE_AA)
+            cv2.putText(img_asli, teks, (xmin, ymin - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2, cv2.LINE_AA)
         else:
             info = {
                 'nama': 'Tidak Terdeteksi',
@@ -132,16 +130,16 @@ def predict():
     if m is None:
         return jsonify({'error': 'Model tidak tersedia saat ini.'}), 503
 
-    try:
-        pil_img = Image.open(file.stream)
-        pil_img = ImageOps.exif_transpose(pil_img)
-        pil_img = pil_img.convert('RGB')
-        img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
-    except Exception as e:
+    # Menggunakan cv2.imdecode untuk mempertahankan akurasi 58%
+    file_bytes = np.frombuffer(file.read(), np.uint8)
+    img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+    if img is None:
         return jsonify({'error': 'Gambar tidak valid'}), 400
 
     img_clean = img.copy()
-    results = m(img, imgsz=640)[0]
+    
+    # Parameter inference awal yang menghasilkan 58%
+    results = m(img, conf=0.30, iou=0.45)[0]
     
     ada_penyakit = False
     best_conf = 0.0
@@ -174,10 +172,11 @@ def predict():
         deskripsi_penyakit = INFO_PENYAKIT[best_label_norm]['desc']
         solusi_penyakit = INFO_PENYAKIT[best_label_norm]['solusi']
 
+        # Menggambar satu kotak dengan ketebalan 2
         x1, y1, x2, y2 = int(best_box[0]), int(best_box[1]), int(best_box[2]), int(best_box[3])
-        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), 1)
+        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), 2)
         teks_label = f"{best_label} {best_conf:.2f}"
-        cv2.putText(img, teks_label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1, cv2.LINE_AA)
+        cv2.putText(img, teks_label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2, cv2.LINE_AA)
     
     os.makedirs(os.path.join(base_dir, 'static'), exist_ok=True)
     output_path = "static/hasil_prediksi.jpg"
