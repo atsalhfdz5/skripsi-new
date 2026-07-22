@@ -9,7 +9,7 @@ import base64
 from flask import Flask, request, jsonify, render_template
 from flask_socketio import SocketIO, emit
 from ultralytics import YOLO
-from threading import Lock
+
 base_dir = os.path.abspath(os.path.dirname(__file__))
 folder_page = os.path.join(base_dir, 'pages')
 
@@ -22,7 +22,6 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 # Load model YOLO (best.pt)
 path_model = os.path.join(base_dir, 'best.pt')
 model = None
-model_lock = Lock()
 
 def get_model():
     global model
@@ -35,10 +34,8 @@ def get_model():
             print(f"Gagal memuat model: {e}")
             model = None
     return model
-   #tambahkan validasi
 
 THRESHOLD_AKURASI = 0.25
-MIN_CONF_VALID = 0.45
 
 # Database Penyakit Padi Global agar sinkron dengan Upload & Kamera
 INFO_PENYAKIT = {
@@ -71,25 +68,7 @@ def core_proses_ai(image_bytes):
         if m is None:
             return {'terdeteksi': False, 'label': 'Model Error', 'score': 0, 'penjelasan': 'Model tidak tersedia.', 'saran': '-', 'img_output': None}
         
-        with model_lock:
-            hasil = m(
-                img_asli,
-                conf=THRESHOLD_AKURASI,
-                imgsz=832
-            )
-
-        if len(hasil) == 0:
-            return {
-                'terdeteksi': False,
-                'label': 'Tidak Terdeteksi',
-                'score': 0,
-                'penjelasan': '',
-                'saran': '',
-                'img_output': img_asli
-            }
-
-        results = hasil[0]
-
+        results = m(img_asli, conf=THRESHOLD_AKURASI)[0]
         terdeteksi_valid = False
         label_tertinggi = None
         score_tertinggi = 0.0
@@ -101,7 +80,7 @@ def core_proses_ai(image_bytes):
             label_norm = pred_label.replace(' ', '_').replace('-', '_')
 
             # Filter: Hanya proses jika label ada di INFO_PENYAKIT
-            if label_norm in INFO_PENYAKIT and confidence >= MIN_CONF_VALID:
+            if label_norm in INFO_PENYAKIT:
                 terdeteksi_valid = True
                 if confidence > score_tertinggi:
                     score_tertinggi = confidence
@@ -156,20 +135,7 @@ def predict():
     if m is None:
         return jsonify({'error': 'Model tidak tersedia saat ini.'}), 503
 
-    with model_lock:
-        hasil = m(
-            img,
-            conf=THRESHOLD_AKURASI,
-            iou=0.45,
-            imgsz=832
-        )
-
-    if len(hasil) == 0:
-        return jsonify({
-        'error': 'Tidak ada hasil prediksi'
-        }), 500
-
-    results = hasil[0]
+    results = m(img, conf=0.30, iou=0.45)[0]
     
     ada_penyakit = False
     deskripsi_penyakit = "Sistem tidak mendeteksi adanya gejala penyakit tanaman padi pada foto ini."
@@ -235,3 +201,6 @@ def handle_video_frame(data_url):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
     socketio.run(app, host='0.0.0.0', port=port, debug=False)
+
+
+
