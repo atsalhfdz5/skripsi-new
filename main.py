@@ -126,18 +126,22 @@ def predict():
     if file.filename == '':
         return jsonify({'error': 'Nama file kosong'}), 400
 
-    file_bytes = np.frombuffer(file.read(), np.uint8)
-    img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
-    if img is None:
-        return jsonify({'error': 'Gambar tidak valid'}), 400
-    img_clean = img.copy()
-
     m = get_model()
     if m is None:
         return jsonify({'error': 'Model tidak tersedia saat ini.'}), 503
 
-    # PERBAIKAN: Hapus limitasi iou dan tambahkan imgsz=640
-    results = m(img, imgsz=640)[0]
+    # 1. Simpan file sementara agar YOLO memprosesnya secara native (termasuk EXIF)
+    temp_dir = os.path.join(base_dir, 'static', 'temp')
+    os.makedirs(temp_dir, exist_ok=True)
+    temp_path = os.path.join(temp_dir, 'temp_upload.jpg')
+    file.save(temp_path)
+
+    # 2. Inferensi menggunakan PATH file (bukan array cv2)
+    results = m(temp_path, imgsz=640)[0]
+    
+    # 3. Baca ulang gambar dengan OpenCV untuk proses anotasi kotak
+    img = cv2.imread(temp_path)
+    img_clean = img.copy()
     
     ada_penyakit = False
     deskripsi_penyakit = "Sistem tidak mendeteksi adanya gejala penyakit tanaman padi pada foto ini."
@@ -151,7 +155,6 @@ def predict():
         label = results.names[cls_id]
         label_norm = label.replace(' ', '_').replace('-', '_')
 
-        # Filter: Hanya proses jika label ada di INFO_PENYAKIT
         if label_norm in INFO_PENYAKIT:
             ada_penyakit = True
             if conf > tingkat_kepercayaan:
@@ -165,9 +168,12 @@ def predict():
             cv2.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), 4)
             cv2.putText(img, f"{INFO_PENYAKIT[label_norm]['nama']} {conf:.2f}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
     
-    os.makedirs(os.path.join(base_dir, 'static'), exist_ok=True)
     output_path = "static/hasil_prediksi.jpg"
     cv2.imwrite(os.path.join(base_dir, output_path), img if ada_penyakit else img_clean)
+
+    # Hapus file sementara setelah diproses
+    if os.path.exists(temp_path):
+        os.remove(temp_path)
 
     return jsonify({
         'result_image_url': '/' + output_path,
