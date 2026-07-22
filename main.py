@@ -36,7 +36,9 @@ def get_model():
     return model
    #tambahkan validasi
 
-THRESHOLD_AKURASI = 0.25
+# Ambang confidence. 0.40 diambil dari kurva F1 model (puncak F1=0.80 pada conf 0.397),
+# dan pada ambang ini pengujian 60 gambar non-padi menghasilkan 0 salah deteksi.
+THRESHOLD_AKURASI = 0.40
 
 # Database Penyakit Padi Global agar sinkron dengan Upload & Kamera
 INFO_PENYAKIT = {
@@ -136,7 +138,7 @@ def predict():
     if m is None:
         return jsonify({'error': 'Model tidak tersedia saat ini.'}), 503
 
-    results = m(img, conf=0.30, iou=0.45)[0]
+    results = m(img, conf=THRESHOLD_AKURASI, iou=0.45)[0]
     
     ada_penyakit = False
     deskripsi_penyakit = "Sistem tidak mendeteksi adanya gejala penyakit tanaman padi pada foto ini."
