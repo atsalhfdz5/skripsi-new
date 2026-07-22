@@ -68,7 +68,8 @@ def core_proses_ai(image_bytes):
         if m is None:
             return {'terdeteksi': False, 'label': 'Model Error', 'score': 0, 'penjelasan': 'Model tidak tersedia.', 'saran': '-', 'img_output': None}
         
-        results = m(img_asli, conf=THRESHOLD_AKURASI)[0]
+        # PERBAIKAN: Tambahkan imgsz=640
+        results = m(img_asli, conf=THRESHOLD_AKURASI, imgsz=640)[0]
         terdeteksi_valid = False
         label_tertinggi = None
         score_tertinggi = 0.0
@@ -135,7 +136,8 @@ def predict():
     if m is None:
         return jsonify({'error': 'Model tidak tersedia saat ini.'}), 503
 
-    results = m(img, conf=0.30, iou=0.45)[0]
+    # PERBAIKAN: Hapus limitasi iou dan tambahkan imgsz=640
+    results = m(img, imgsz=640)[0]
     
     ada_penyakit = False
     deskripsi_penyakit = "Sistem tidak mendeteksi adanya gejala penyakit tanaman padi pada foto ini."
@@ -175,6 +177,7 @@ def predict():
         'deskripsi': deskripsi_penyakit,
         'solusi': solusi_penyakit
     })
+
 @socketio.on('video_frame')
 def handle_video_frame(data_url):
     try:
