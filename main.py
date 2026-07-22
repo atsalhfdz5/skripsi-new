@@ -9,6 +9,7 @@ import base64
 from flask import Flask, request, jsonify, render_template
 from flask_socketio import SocketIO, emit
 from ultralytics import YOLO
+from PIL import Image, ImageOps
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 folder_page = os.path.join(base_dir, 'pages')
@@ -29,7 +30,6 @@ def get_model():
         try:
             model = YOLO(path_model)
             print("Model dimuat:", path_model)
-            print("Nama kelas:", model.names)
         except Exception as e:
             print(f"Gagal memuat model: {e}")
             model = None
@@ -37,7 +37,7 @@ def get_model():
 
 THRESHOLD_AKURASI = 0.25
 
-# Database Penyakit Padi Global agar sinkron dengan Upload & Kamera
+# Database Penyakit Padi Global
 INFO_PENYAKIT = {
     'Bacterial_Leaf_Blight': {
         'nama': 'Hawar Daun Bakteri (Bacterial Leaf Blight)',
@@ -68,7 +68,6 @@ def core_proses_ai(image_bytes):
         if m is None:
             return {'terdeteksi': False, 'label': 'Model Error', 'score': 0, 'penjelasan': 'Model tidak tersedia.', 'saran': '-', 'img_output': None}
         
-        # PERBAIKAN: Tambahkan imgsz=640
         results = m(img_asli, conf=THRESHOLD_AKURASI, imgsz=640)[0]
         terdeteksi_valid = False
         label_tertinggi = None
@@ -80,7 +79,6 @@ def core_proses_ai(image_bytes):
             pred_label = m.names[class_idx]
             label_norm = pred_label.replace(' ', '_').replace('-', '_')
 
-            # Filter: Hanya proses jika label ada di INFO_PENYAKIT
             if label_norm in INFO_PENYAKIT:
                 terdeteksi_valid = True
                 if confidence > score_tertinggi:
@@ -90,7 +88,7 @@ def core_proses_ai(image_bytes):
                 xmin, ymin, xmax, ymax = map(int, box.xyxy[0])
                 cv2.rectangle(img_asli, (xmin, ymin), (xmax, ymax), (0, 0, 255), 2)
                 teks = f"{INFO_PENYAKIT[label_norm]['nama']} {confidence:.2f}"
-                cv2.putText(img_asli, teks, (xmin, ymin - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1, cv2.LINE_AA)
+                cv2.putText(img_asli, teks, (xmin, ymin - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2, cv2.LINE_AA)
 
         if terdeteksi_valid and label_tertinggi:
             info = INFO_PENYAKIT[label_tertinggi]
@@ -130,18 +128,19 @@ def predict():
     if m is None:
         return jsonify({'error': 'Model tidak tersedia saat ini.'}), 503
 
-    # 1. Simpan file sementara agar YOLO memprosesnya secara native (termasuk EXIF)
-    temp_dir = os.path.join(base_dir, 'static', 'temp')
-    os.makedirs(temp_dir, exist_ok=True)
-    temp_path = os.path.join(temp_dir, 'temp_upload.jpg')
-    file.save(temp_path)
+    # KOREKSI ROTASI EXIF & SINKRONISASI MATRIKS
+    try:
+        pil_img = Image.open(file.stream)
+        pil_img = ImageOps.exif_transpose(pil_img)
+        pil_img = pil_img.convert('RGB')
+        img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+    except Exception as e:
+        return jsonify({'error': 'Gambar tidak valid'}), 400
 
-    # 2. Inferensi menggunakan PATH file (bukan array cv2)
-    results = m(temp_path, imgsz=640)[0]
-    
-    # 3. Baca ulang gambar dengan OpenCV untuk proses anotasi kotak
-    img = cv2.imread(temp_path)
     img_clean = img.copy()
+    
+    # Inferensi pada matriks array yang sama persis
+    results = m(img, imgsz=640)[0]
     
     ada_penyakit = False
     deskripsi_penyakit = "Sistem tidak mendeteksi adanya gejala penyakit tanaman padi pada foto ini."
@@ -168,12 +167,9 @@ def predict():
             cv2.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), 4)
             cv2.putText(img, f"{INFO_PENYAKIT[label_norm]['nama']} {conf:.2f}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
     
+    os.makedirs(os.path.join(base_dir, 'static'), exist_ok=True)
     output_path = "static/hasil_prediksi.jpg"
     cv2.imwrite(os.path.join(base_dir, output_path), img if ada_penyakit else img_clean)
-
-    # Hapus file sementara setelah diproses
-    if os.path.exists(temp_path):
-        os.remove(temp_path)
 
     return jsonify({
         'result_image_url': '/' + output_path,
