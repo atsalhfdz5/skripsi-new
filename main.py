@@ -39,7 +39,7 @@ def get_model():
 
 # Ambang confidence. 0.40 diambil dari kurva F1 model (puncak F1=0.80 pada conf 0.397),
 # dan pada ambang ini pengujian 60 gambar non-padi menghasilkan 0 salah deteksi.
-THRESHOLD_AKURASI = 0.40
+THRESHOLD_AKURASI = 0.30
 
 # Database Penyakit Padi Global agar sinkron dengan Upload & Kamera
 INFO_PENYAKIT = {
