@@ -93,10 +93,10 @@ def core_proses_ai(image_bytes):
         if terdeteksi_valid:
             info = INFO_PENYAKIT[best_label_norm]
             xmin, ymin, xmax, ymax = map(int, best_box)
-            # Ketebalan kotak 2, font scale 0.5, ketebalan teks 2
-            cv2.rectangle(img_asli, (xmin, ymin), (xmax, ymax), (0, 0, 255), 2)
+            # PERUBAHAN: Ketebalan kotak menjadi 4, font scale 0.8, ketebalan teks 3
+            cv2.rectangle(img_asli, (xmin, ymin), (xmax, ymax), (0, 0, 255), 4)
             teks = f"{best_label_asli} {best_conf:.2f}"
-            cv2.putText(img_asli, teks, (xmin, ymin - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2, cv2.LINE_AA)
+            cv2.putText(img_asli, teks, (xmin, ymin - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 3, cv2.LINE_AA)
         else:
             info = {
                 'nama': 'Tidak Terdeteksi',
@@ -175,11 +175,11 @@ def predict():
         deskripsi_penyakit = INFO_PENYAKIT[best_label_norm]['desc']
         solusi_penyakit = INFO_PENYAKIT[best_label_norm]['solusi']
 
-        # Menggambar satu kotak dengan ketebalan 2
+        # PERUBAHAN: Menggambar kotak dengan ketebalan 4, font scale 0.8, ketebalan teks 3
         x1, y1, x2, y2 = int(best_box[0]), int(best_box[1]), int(best_box[2]), int(best_box[3])
-        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), 2)
+        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), 4)
         teks_label = f"{best_label} {best_conf:.2f}"
-        cv2.putText(img, teks_label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2, cv2.LINE_AA)
+        cv2.putText(img, teks_label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 3, cv2.LINE_AA)
     
     os.makedirs(os.path.join(base_dir, 'static'), exist_ok=True)
     output_path = "static/hasil_prediksi.jpg"
