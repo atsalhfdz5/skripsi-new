@@ -1,2 +1,5 @@
 [phases.setup]
 aptPkgs = ["libgl1-mesa-glx", "libglib2.0-0", "libxcb1"]
+
+[start]
+cmd = "gunicorn -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker -w 1 --timeout 120 main:app"
