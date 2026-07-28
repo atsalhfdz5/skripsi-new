@@ -93,10 +93,22 @@ def core_proses_ai(image_bytes):
         if terdeteksi_valid:
             info = INFO_PENYAKIT[best_label_norm]
             xmin, ymin, xmax, ymax = map(int, best_box)
-            # PERUBAHAN: Ketebalan kotak menjadi 4, font scale 0.8, ketebalan teks 3
-            cv2.rectangle(img_asli, (xmin, ymin), (xmax, ymax), (0, 0, 255), 4)
+            
+            # --- PENGATURAN VISUAL TEBAL ---
+            box_thick = 8
+            font_scale = 2.0
+            font_thick = 4
             teks = f"{best_label_asli} {best_conf:.2f}"
-            cv2.putText(img_asli, teks, (xmin, ymin - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 3, cv2.LINE_AA)
+            
+            # Gambar kotak utama
+            cv2.rectangle(img_asli, (xmin, ymin), (xmax, ymax), (0, 0, 255), box_thick)
+            
+            # Gambar kotak latar belakang untuk teks agar menonjol
+            (tw, th), _ = cv2.getTextSize(teks, cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_thick)
+            cv2.rectangle(img_asli, (xmin, ymin - th - 15), (xmin + tw, ymin), (0, 0, 255), -1)
+            
+            # Tulis teks berwarna putih di atas latar merah
+            cv2.putText(img_asli, teks, (xmin, ymin - 5), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255), font_thick, cv2.LINE_AA)
         else:
             info = {
                 'nama': 'Tidak Terdeteksi',
@@ -133,7 +145,6 @@ def predict():
     if m is None:
         return jsonify({'error': 'Model tidak tersedia saat ini.'}), 503
 
-    # Menggunakan cv2.imdecode untuk mempertahankan akurasi 58%
     file_bytes = np.frombuffer(file.read(), np.uint8)
     img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
     if img is None:
@@ -141,7 +152,6 @@ def predict():
 
     img_clean = img.copy()
     
-    # Parameter inference awal yang menghasilkan 58%
     results = m(img, conf=0.30, iou=0.45)[0]
     
     ada_penyakit = False
@@ -175,11 +185,22 @@ def predict():
         deskripsi_penyakit = INFO_PENYAKIT[best_label_norm]['desc']
         solusi_penyakit = INFO_PENYAKIT[best_label_norm]['solusi']
 
-        # PERUBAHAN: Menggambar kotak dengan ketebalan 4, font scale 0.8, ketebalan teks 3
+        # --- PENGATURAN VISUAL TEBAL ---
         x1, y1, x2, y2 = int(best_box[0]), int(best_box[1]), int(best_box[2]), int(best_box[3])
-        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), 4)
+        box_thick = 8
+        font_scale = 2.0
+        font_thick = 4
         teks_label = f"{best_label} {best_conf:.2f}"
-        cv2.putText(img, teks_label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 3, cv2.LINE_AA)
+        
+        # Gambar kotak utama
+        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), box_thick)
+        
+        # Gambar kotak latar belakang untuk teks agar menonjol
+        (tw, th), _ = cv2.getTextSize(teks_label, cv2.FONT_HERSHEY_SIMPLEX, font_scale, font_thick)
+        cv2.rectangle(img, (x1, y1 - th - 15), (x1 + tw, y1), (0, 0, 255), -1)
+        
+        # Tulis teks berwarna putih di atas latar merah
+        cv2.putText(img, teks_label, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255), font_thick, cv2.LINE_AA)
     
     os.makedirs(os.path.join(base_dir, 'static'), exist_ok=True)
     output_path = "static/hasil_prediksi.jpg"
